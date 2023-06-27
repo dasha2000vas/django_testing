@@ -1,4 +1,5 @@
 import pytest
+
 from yanews.settings import NEWS_COUNT_ON_HOME_PAGE
 
 

@@ -3,6 +3,7 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from notes.forms import WARNING
 from notes.models import Note
 
@@ -20,6 +21,7 @@ class TestNoteCreation(TestCase):
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
         cls.url = reverse('notes:add')
+        cls.initial_count = Note.objects.count()
         cls.form_data = {
             'title': cls.TITLE,
             'text': cls.TEXT,
@@ -31,14 +33,14 @@ class TestNoteCreation(TestCase):
         expected_url = f'{login_url}?next={self.url}'
         self.assertRedirects(response, expected_url)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        self.assertEqual(notes_count, self.initial_count)
 
     def test_authorized_user_can_create_note(self):
         response = self.author_client.post(self.url, data=self.form_data)
         redirect_url = reverse('notes:success')
         self.assertRedirects(response, redirect_url)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertGreater(notes_count, self.initial_count)
         note = Note.objects.get()
         self.assertEqual(note.title, self.TITLE)
         self.assertEqual(note.text, self.TEXT)
@@ -47,6 +49,7 @@ class TestNoteCreation(TestCase):
 
     def test_user_cant_post_notes_with_same_slug(self):
         self.author_client.post(self.url, data=self.form_data)
+        initial_count = Note.objects.count()
         response = self.author_client.post(self.url, data=self.form_data)
         self.assertFormError(
             response,
@@ -55,7 +58,7 @@ class TestNoteCreation(TestCase):
             errors=self.SLUG + WARNING
         )
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, initial_count)
 
 
 class TestNoteDeleteEdit(TestCase):
@@ -80,6 +83,7 @@ class TestNoteDeleteEdit(TestCase):
             slug=cls.SLUG,
             author=cls.author,
         )
+        cls.initial_count = Note.objects.count()
         cls.url_delete = reverse('notes:delete', args=(cls.note.slug,))
         cls.url_edit = reverse('notes:edit', args=(cls.note.slug,))
         cls.url_redirect = reverse('notes:success')
@@ -93,13 +97,13 @@ class TestNoteDeleteEdit(TestCase):
         response = self.author_client.delete(self.url_delete)
         self.assertRedirects(response, self.url_redirect)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        self.assertLess(notes_count, self.initial_count)
 
     def test_user_cant_delete_note_of_another_user(self):
         response = self.another_user_client.delete(self.url_delete)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, self.initial_count)
 
     def test_author_can_edit_note(self):
         response = self.author_client.post(self.url_edit, data=self.form_data)
