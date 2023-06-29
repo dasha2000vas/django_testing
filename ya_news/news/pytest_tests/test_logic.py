@@ -8,25 +8,27 @@ from news.models import Comment
 
 
 @pytest.mark.django_db
-def test_anonymous_user_cant_create_comment(client, form_data, detail_url):
+def test_anonymous_user_cant_create_comment(
+    client, form_data, detail_url, zero_count
+):
     client.post(detail_url, data=form_data)
     comment_count = Comment.objects.count()
-    assert comment_count == 0
+    assert comment_count == zero_count
 
 
 def test_user_can_create_comment(
-    admin_client, form_data, detail_url, admin_user, news
+    admin_client, form_data, detail_url, admin_user, news, zero_count
 ):
     admin_client.post(detail_url, data=form_data)
     comment_count = Comment.objects.count()
-    assert comment_count == 1
+    assert comment_count > zero_count
     comment = Comment.objects.get()
     assert comment.text == form_data['text']
     assert comment.news == news
     assert comment.author == admin_user
 
 
-def test_user_cant_use_bad_words(admin_client, detail_url):
+def test_user_cant_use_bad_words(admin_client, detail_url, zero_count):
     bad_words_data = {'text': f'Текст, {BAD_WORDS[0]}, еще текст'}
     response = admin_client.post(detail_url, data=bad_words_data)
     assertFormError(
@@ -36,22 +38,26 @@ def test_user_cant_use_bad_words(admin_client, detail_url):
         errors=WARNING,
     )
     comment_count = Comment.objects.count()
-    assert comment_count == 0
+    assert comment_count == zero_count
 
 
-def test_author_can_delete_comment(author_client, delete_url, detail_url):
+def test_author_can_delete_comment(
+    author_client, delete_url, detail_url, initial_count
+):
     url_to_comments = detail_url + '#comments'
     response = author_client.post(delete_url)
     assertRedirects(response, url_to_comments)
     comment_count = Comment.objects.count()
-    assert comment_count == 0
+    assert comment_count < initial_count
 
 
-def test_user_cant_delete_comment_of_another_user(admin_client, delete_url):
+def test_user_cant_delete_comment_of_another_user(
+    admin_client, delete_url, initial_count
+):
     response = admin_client.post(delete_url)
     assert response.status_code == HTTPStatus.NOT_FOUND
     comment_count = Comment.objects.count()
-    assert comment_count == 1
+    assert comment_count == initial_count
 
 
 def test_author_can_edit_comment(

@@ -18,12 +18,12 @@ def news_id(news: News) -> tuple[int]:
     Фикстура возвращает кортеж из id новости,
     нужный для получения url-адреса.
     '''
-    return news.id,
+    return news.id
 
 
 @pytest.fixture
 def detail_url(news_id):
-    return reverse('news:detail', args=news_id)
+    return reverse('news:detail', args=(news_id,))
 
 
 @pytest.fixture
@@ -65,6 +65,16 @@ def comment(author, news):
         author=author,
         text='Текст комментария'
     )
+
+
+@pytest.fixture
+def zero_count():
+    return Comment.objects.count()
+
+
+@pytest.fixture
+def initial_count(comment):
+    return Comment.objects.count()
 
 
 @pytest.fixture

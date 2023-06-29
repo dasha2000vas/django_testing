@@ -17,7 +17,10 @@ from pytest_django.asserts import assertRedirects
     ),
 )
 def test_pages_availability(client, name, args):
-    url = reverse(name, args=args)
+    if args is None:
+        url = reverse(name)
+    else:
+        url = reverse(name, args=(args,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
