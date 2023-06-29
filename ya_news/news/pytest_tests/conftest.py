@@ -13,11 +13,7 @@ def news():
 
 
 @pytest.fixture
-def news_id(news: News) -> tuple[int]:
-    '''
-    Фикстура возвращает кортеж из id новости,
-    нужный для получения url-адреса.
-    '''
+def news_id(news: News):
     return news.id
 
 
